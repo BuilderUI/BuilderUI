@@ -787,6 +787,107 @@ end
         end
     end)
 end
+function tab:AddInfoCard(title, value, icon, color)
+	local card = Instance.new("Frame", tabContent)
+	card.Size = UDim2.new(1, 0, 0, 48)
+	card.BackgroundColor3 = color or Color3.fromRGB(60, 62, 65)
+	createUICorner(card, 8)
+
+	local iconLabel = Instance.new("TextLabel", card)
+	iconLabel.Size = UDim2.new(0, 32, 1, 0)
+	iconLabel.Position = UDim2.new(0, 10, 0, 0)
+	iconLabel.BackgroundTransparency = 1
+	iconLabel.Font = Enum.Font.BuilderSansBold
+	iconLabel.TextSize = 20
+	iconLabel.Text = icon or "ℹ️"
+	iconLabel.TextColor3 = Color3.new(1, 1, 1)
+
+	local titleLabel = Instance.new("TextLabel", card)
+	titleLabel.Size = UDim2.new(0.5, -50, 1, 0)
+	titleLabel.Position = UDim2.new(0, 50, 0, 0)
+	titleLabel.Font = Enum.Font.BuilderSans
+	titleLabel.TextSize = 16
+	titleLabel.Text = title
+	titleLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.BackgroundTransparency = 1
+
+	local valueLabel = Instance.new("TextLabel", card)
+	valueLabel.Size = UDim2.new(0.5, -20, 1, 0)
+	valueLabel.Position = UDim2.new(0.5, 0, 0, 0)
+	valueLabel.Font = Enum.Font.BuilderSansBold
+	valueLabel.TextSize = 16
+	valueLabel.Text = value
+	valueLabel.TextColor3 = Color3.new(1, 1, 1)
+	valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+	valueLabel.BackgroundTransparency = 1
+end
+function tab:AddUserCard(username)
+	local container = Instance.new("Frame", tabContent)
+	container.Size = UDim2.new(1, 0, 0, 120)
+	container.BackgroundColor3 = Color3.fromRGB(44, 45, 49)
+	createUICorner(container, 8)
+
+	local avatar = Instance.new("ImageLabel", container)
+	avatar.Size = UDim2.new(0, 80, 0, 80)
+	avatar.Position = UDim2.new(0, 15, 0.5, -40)
+	avatar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	avatar.BackgroundTransparency = 0
+	avatar.ScaleType = Enum.ScaleType.Fit
+	createUICorner(avatar, 40)
+
+	local displayNameLabel = Instance.new("TextLabel", container)
+	displayNameLabel.Size = UDim2.new(1, -110, 0, 26)
+	displayNameLabel.Position = UDim2.new(0, 105, 0.5, -20)
+	displayNameLabel.Font = Enum.Font.BuilderSansBold
+	displayNameLabel.TextSize = 18
+	displayNameLabel.TextColor3 = Color3.new(1, 1, 1)
+	displayNameLabel.BackgroundTransparency = 1
+	displayNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	displayNameLabel.Text = "Loading..."
+
+	local usernameLabel = Instance.new("TextLabel", container)
+	usernameLabel.Size = UDim2.new(1, -110, 0, 20)
+	usernameLabel.Position = UDim2.new(0, 105, 0.5, 6)
+	usernameLabel.Font = Enum.Font.BuilderSans
+	usernameLabel.TextSize = 14
+	usernameLabel.TextColor3 = Color3.fromRGB(170, 170, 170)
+	usernameLabel.BackgroundTransparency = 1
+	usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	usernameLabel.Text = ""
+
+	-- Try getting UserId
+	local success, userId = pcall(function()
+		return game.Players:GetUserIdFromNameAsync(username)
+	end)
+
+	if success and userId then
+		-- Set username
+		usernameLabel.Text = "@" .. username
+
+		-- Set Display Name
+		local nameSuccess, displayName = pcall(function()
+			local user = game.Players:GetNameFromUserIdAsync(userId)
+			return user
+		end)
+		if nameSuccess and displayName then
+			displayNameLabel.Text = displayName
+		else
+			displayNameLabel.Text = username
+		end
+
+		-- Set avatar thumbnail
+		local thumbSuccess, thumb = pcall(function()
+			return game.Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+		end)
+		if thumbSuccess then
+			avatar.Image = thumb
+		end
+	else
+		displayNameLabel.Text = "Unknown User"
+		usernameLabel.Text = "@" .. username
+	end
+end
 		
 		function tab:AddTextbox(text, placeholder, callback, tooltipText)
 			local container = Instance.new("Frame", tabContent)
