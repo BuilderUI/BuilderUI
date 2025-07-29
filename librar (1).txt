@@ -888,6 +888,40 @@ function tab:AddUserCard(username)
 		usernameLabel.Text = "@" .. username
 	end
 end
+function tab:AddCredits(title, names)
+	local container = Instance.new("Frame", tabContent)
+	container.Size = UDim2.new(1, 0, 0, 40 + (#names * 24))
+	container.BackgroundTransparency = 1
+
+	local header = Instance.new("TextLabel", container)
+	header.Size = UDim2.new(1, 0, 0, 28)
+	header.Font = Enum.Font.BuilderSansBold
+	header.TextSize = 18
+	header.TextColor3 = Color3.fromRGB(255, 255, 255)
+	header.Text = title or "Credits"
+	header.BackgroundTransparency = 1
+	header.TextXAlignment = Enum.TextXAlignment.Left
+
+	local listContainer = Instance.new("Frame", container)
+	listContainer.Size = UDim2.new(1, 0, 0, #names * 24)
+	listContainer.Position = UDim2.new(0, 0, 0, 32)
+	listContainer.BackgroundTransparency = 1
+
+	local layout = Instance.new("UIListLayout", listContainer)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 4)
+
+	for _, name in ipairs(names) do
+		local nameLabel = Instance.new("TextLabel", listContainer)
+		nameLabel.Size = UDim2.new(1, 0, 0, 20)
+		nameLabel.Font = Enum.Font.BuilderSans
+		nameLabel.TextSize = 16
+		nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+		nameLabel.Text = "- " .. name
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nameLabel.BackgroundTransparency = 1
+	end
+end
 		
 		function tab:AddTextbox(text, placeholder, callback, tooltipText)
 			local container = Instance.new("Frame", tabContent)
