@@ -329,124 +329,104 @@ function BuilderUI:NotifySuccess(...) createNotification("Success", ...) end
 function BuilderUI:NotifyWarning(...) createNotification("Warning", ...) end
 function BuilderUI:NotifyError(...) createNotification("Error", ...) end
 
---// MAIN WINDOW \\--function --// MAIN WINDOW \\--
 function BuilderUI:CreateWindow(titleText)
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "BuilderUI_" .. titleText:gsub("%s+", "")
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-	gui.ResetOnSpawn = false
-	gui.Parent = playerGui
+local gui = Instance.new("ScreenGui", playerGui)
+gui.Name = "BuilderUI_" .. titleText:gsub("%s+", "")
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+gui.ResetOnSpawn = false
 
-	-- Main window frame
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(0, 600, 0, 400)
-	frame.Position = UDim2.new(0.5, -300, 0.45, -200)
-	frame.BackgroundColor3 = BuilderUI.ActiveTheme.Background
-	frame.BackgroundTransparency = 1
-	frame.Active = true
-	frame.Draggable = true
-	frame.ClipsDescendants = true
-	frame.Parent = gui
+local frame = Instance.new("Frame", gui)  
+frame.Size = UDim2.new(0, 600, 0, 400)  
+frame.Position = UDim2.new(0.5, -300, 0.45, -200) -- Start higher  
+frame.BackgroundColor3 = BuilderUI.ActiveTheme.Background  
+frame.BackgroundTransparency = 1  
+frame.Active = true  
+frame.Draggable = true  
+frame.ClipsDescendants = true  
+createUICorner(frame)  
+  
+-- Store original size for restore  
+local originalSize = frame.Size  
+local isMinimized = false  
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = frame
+tween(frame, {  
+	Position = UDim2.new(0.5, -300, 0.5, -200),  
+	BackgroundTransparency = 0  
+}):Play()  
+  
+-- Header  
+local header = Instance.new("Frame", frame)  
+header.Size = UDim2.new(1, 0, 0, 36)  
+header.BackgroundColor3 = BuilderUI.ActiveTheme.Secondary  
+  
+local title = Instance.new("TextLabel", header)  
+title.Size = UDim2.new(1, -80, 1, 0)  
+title.Position = UDim2.new(0, 12, 0, 0)  
+title.Text = titleText  
+title.Font = BuilderUI.ActiveTheme.BoldFont  
+title.TextSize = 16  
+title.TextColor3 = BuilderUI.ActiveTheme.Text  
+title.TextXAlignment = Enum.TextXAlignment.Left  
+title.BackgroundTransparency = 1  
 
-	local originalSize = frame.Size
-	local isMinimized = false
+-- Header Buttons  
+local close = Instance.new("TextButton", header)  
+close.Size = UDim2.new(0, 24, 0, 24)  
+close.Position = UDim2.new(1, -32, 0.5, -12)  
+close.Text = "✕"  
+close.Font = BuilderUI.ActiveTheme.Font  
+close.TextSize = 16  
+close.TextColor3 = BuilderUI.ActiveTheme.MutedText  
+close.BackgroundTransparency = 1  
+createTooltip(close, "Close")  
+close.MouseButton1Click:Connect(function()  
+	tween(frame, {Position = UDim2.new(0.5, -300, 0.45, -200), BackgroundTransparency = 1}):Play()  
+	task.wait(BuilderUI.Config.Animation.Duration)  
+	gui:Destroy()  
+end)  
+close.MouseEnter:Connect(function() tween(close, {TextColor3 = BuilderUI.ActiveTheme.Error}):Play() end)  
+close.MouseLeave:Connect(function() tween(close, {TextColor3 = BuilderUI.ActiveTheme.MutedText}):Play() end)  
 
-	tween(frame, {
-		Position = UDim2.new(0.5, -300, 0.5, -200),
-		BackgroundTransparency = 0
-	}):Play()
+local minimize = Instance.new("TextButton", header)  
+minimize.Size = UDim2.new(0, 24, 0, 24)  
+minimize.Position = UDim2.new(1, -56, 0.5, -12)  
+minimize.Text = "—"  
+minimize.Font = BuilderUI.ActiveTheme.Font  
+minimize.TextSize = 16  
+minimize.TextColor3 = BuilderUI.ActiveTheme.MutedText  
+minimize.BackgroundTransparency = 1  
+createTooltip(minimize, "Minimize")  
+minimize.MouseEnter:Connect(function() tween(minimize, {TextColor3 = BuilderUI.ActiveTheme.Text}):Play() end)  
+minimize.MouseLeave:Connect(function() tween(minimize, {TextColor3 = BuilderUI.ActiveTheme.MutedText}):Play() end)  
 
-	local header = Instance.new("Frame", frame)
-	header.Size = UDim2.new(1, 0, 0, 36)
-	header.BackgroundColor3 = BuilderUI.ActiveTheme.Secondary
+-- Sidebar & Content  
+local sidebar = Instance.new("Frame", frame)  
+sidebar.Size = UDim2.new(0, 150, 1, -36)  
+sidebar.Position = UDim2.new(0, 0, 0, 36)  
+sidebar.BackgroundColor3 = BuilderUI.ActiveTheme.Background  
 
-	local title = Instance.new("TextLabel", header)
-	title.Size = UDim2.new(1, -80, 1, 0)
-	title.Position = UDim2.new(0, 12, 0, 0)
-	title.Text = titleText
-	title.Font = BuilderUI.ActiveTheme.BoldFont
-	title.TextSize = 16
-	title.TextColor3 = BuilderUI.ActiveTheme.Text
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.BackgroundTransparency = 1
+local tabContentHolder = Instance.new("Frame", frame)  
+tabContentHolder.Size = UDim2.new(1, -165, 1, -46)  
+tabContentHolder.Position = UDim2.new(0, 155, 0, 41)  
+tabContentHolder.BackgroundTransparency = 1  
 
-	local close = Instance.new("TextButton", header)
-	close.Size = UDim2.new(0, 24, 0, 24)
-	close.Position = UDim2.new(1, -32, 0.5, -12)
-	close.Text = "✕"
-	close.Font = BuilderUI.ActiveTheme.Font
-	close.TextSize = 16
-	close.TextColor3 = BuilderUI.ActiveTheme.MutedText
-	close.BackgroundTransparency = 1
-	createTooltip(close, "Close")
+minimize.MouseButton1Click:Connect(function()  
+	isMinimized = not isMinimized  
+	sidebar.Visible = not isMinimized  
+	tabContentHolder.Visible = not isMinimized  
+	if isMinimized then  
+		tween(frame, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset, 0, 36)}):Play()  
+	else  
+		tween(frame, {Size = originalSize}):Play()  
+	end  
+end)  
 
-	close.MouseButton1Click:Connect(function()
-		tween(frame, {Position = UDim2.new(0.5, -300, 0.45, -200), BackgroundTransparency = 1}):Play()
-		task.wait(BuilderUI.Config.Animation.Duration)
-		gui:Destroy()
-	end)
-
-	close.MouseEnter:Connect(function()
-		tween(close, {TextColor3 = BuilderUI.ActiveTheme.Error}):Play()
-	end)
-
-	close.MouseLeave:Connect(function()
-		tween(close, {TextColor3 = BuilderUI.ActiveTheme.MutedText}):Play()
-	end)
-
-	local minimize = Instance.new("TextButton", header)
-	minimize.Size = UDim2.new(0, 24, 0, 24)
-	minimize.Position = UDim2.new(1, -56, 0.5, -12)
-	minimize.Text = "—"
-	minimize.Font = BuilderUI.ActiveTheme.Font
-	minimize.TextSize = 16
-	minimize.TextColor3 = BuilderUI.ActiveTheme.MutedText
-	minimize.BackgroundTransparency = 1
-	createTooltip(minimize, "Minimize")
-
-	minimize.MouseEnter:Connect(function()
-		tween(minimize, {TextColor3 = BuilderUI.ActiveTheme.Text}):Play()
-	end)
-
-	minimize.MouseLeave:Connect(function()
-		tween(minimize, {TextColor3 = BuilderUI.ActiveTheme.MutedText}):Play()
-	end)
-
-	local sidebar = Instance.new("Frame", frame)
-	sidebar.Size = UDim2.new(0, 150, 1, -36)
-	sidebar.Position = UDim2.new(0, 0, 0, 36)
-	sidebar.BackgroundColor3 = BuilderUI.ActiveTheme.Background
-	sidebar.Parent = frame
-
-	local tabContentHolder = Instance.new("Frame", frame)
-	tabContentHolder.Size = UDim2.new(1, -165, 1, -46)
-	tabContentHolder.Position = UDim2.new(0, 155, 0, 41)
-	tabContentHolder.BackgroundTransparency = 1
-	tabContentHolder.Parent = frame
-
-	minimize.MouseButton1Click:Connect(function()
-		isMinimized = not isMinimized
-		sidebar.Visible = not isMinimized
-		tabContentHolder.Visible = not isMinimized
-		if isMinimized then
-			tween(frame, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset, 0, 36)}):Play()
-		else
-			tween(frame, {Size = originalSize}):Play()
-		end
-	end)
-
-	local sidebarLayout = Instance.new("UIListLayout", sidebar)
-	sidebarLayout.Padding = UDim.new(0, 5)
-	sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	sidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-	sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-	local sidebarPadding = Instance.new("UIPadding", sidebar)
-	sidebarPadding.PaddingTop = UDim.new(0, 10)
+local sidebarLayout = Instance.new("UIListLayout", sidebar)  
+sidebarLayout.Padding = UDim.new(0, 5)  
+sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center  
+sidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top  
+sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder  
+Instance.new("UIPadding", sidebar).PaddingTop = UDim.new(0, 10)
 end
 
 	-- API
