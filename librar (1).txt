@@ -330,11 +330,13 @@ function BuilderUI:NotifyWarning(...) createNotification("Warning", ...) end
 function BuilderUI:NotifyError(...) createNotification("Error", ...) end
 
 function BuilderUI:CreateWindow(titleText)
-local gui = Instance.new("ScreenGui", playerGui)
-gui.Name = "BuilderUI_" .. titleText:gsub("%s+", "")
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-gui.ResetOnSpawn = false
+	local player = game:GetService("Players").LocalPlayer
+	local playerGui = player:WaitForChild("PlayerGui")
 
+	local gui = Instance.new("ScreenGui", playerGui)
+	gui.Name = "BuilderUI_" .. titleText:gsub("%s+", "")
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+	gui.ResetOnSpawn = false
 local frame = Instance.new("Frame", gui)  
 frame.Size = UDim2.new(0, 600, 0, 400)  
 frame.Position = UDim2.new(0.5, -300, 0.45, -200) -- Start higher  
