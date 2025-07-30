@@ -1,3 +1,4 @@
+return function()
 local BuilderUI = {}
 BuilderUI.Version = "2.3"
 
@@ -1021,3 +1022,4 @@ end
 end
 
 return BuilderUI
+end
