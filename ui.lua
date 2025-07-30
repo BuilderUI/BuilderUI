@@ -558,7 +558,7 @@ function BuilderUI:CreateWindow(titleText)
 	local originalColor = btn.BackgroundColor3
 
 	btn.MouseEnter:Connect(function()
-		tween(btn, { BackgroundColor3 = Color3:Lerp(originalColor, Color3.new(1, 1, 1), 0.1) }):Play()
+		tween(btn, { BackgroundColor3 = originalColor:Lerp(Color3.new(1, 1, 1), 0.1) }):Play()
 	end)
 
 	btn.MouseLeave:Connect(function()
@@ -566,49 +566,35 @@ function BuilderUI:CreateWindow(titleText)
 	end)
 
 	btn.MouseButton1Click:Connect(function(x, y)
-		-- Ripple effect
+		tween(btn, { BackgroundColor3 = BuilderUI.ActiveTheme.Accent }):Play()
+		task.wait(0.1)
+		tween(btn, { BackgroundColor3 = originalColor }):Play()
+
+		-- Create ripple
 		local ripple = Instance.new("Frame")
 		ripple.Size = UDim2.new(0, 0, 0, 0)
-		ripple.Position = UDim2.new(0, x / btn.AbsoluteSize.X, 0, y / btn.AbsoluteSize.Y)
+		ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		ripple.BackgroundTransparency = 0.6
+		ripple.Position = UDim2.new(0, x - btn.AbsolutePosition.X, 0, y - btn.AbsolutePosition.Y)
 		ripple.AnchorPoint = Vector2.new(0.5, 0.5)
-		ripple.BackgroundColor3 = BuilderUI.ActiveTheme.Accent
-		ripple.BackgroundTransparency = 0.5
 		ripple.ZIndex = 10
 		ripple.Parent = btn
 
 		createUICorner(ripple)
 
-		local goalSize = UDim2.new(1.5, 0, 4, 0)
-		local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-		tween(ripple, tweenInfo, { Size = goalSize, BackgroundTransparency = 1 }):Play()
+		tween(ripple, {
+			Size = UDim2.new(0, btn.AbsoluteSize.X * 2, 0, btn.AbsoluteSize.X * 2),
+			BackgroundTransparency = 1
+		}, 0.5):Play()
 
 		game:GetService("Debris"):AddItem(ripple, 0.6)
 
-		tween(btn, { BackgroundColor3 = BuilderUI.ActiveTheme.Accent }):Play()
-		task.wait(0.1)
-		tween(btn, { BackgroundColor3 = originalColor }):Play()
-
 		if typeof(callback) == "function" then
 			task.spawn(function()
-				local success, result = pcall(callback)
-				if not success then
-					warn("[AddButton] Error in callback:", result)
-				end
+				pcall(callback)
 			end)
-		elseif typeof(callback) == "string" then
-			local loadedFunc = loadstring(callback)
-			if typeof(loadedFunc) == "function" then
-				task.spawn(function()
-					local success, err = pcall(loadedFunc)
-					if not success then
-						warn("[AddButton] Error in loadstring callback:", err)
-					end
-				end)
-			else
-				warn("[AddButton] loadstring did not return a function for:", callback)
-			end
 		else
-			warn("[AddButton] Invalid callback type:", typeof(callback))
+			warn("[AddButton] Callback is not a function:", typeof(callback))
 		end
 	end)
 
