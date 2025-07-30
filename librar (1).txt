@@ -533,29 +533,43 @@ function BuilderUI:CreateWindow(titleText)
 		function tab:AddButton(text, callback, tooltipText)
 	local btn = Instance.new("TextButton", tabContent)
 	btn.Size = UDim2.new(1, 0, 0, 36)
-	btn.Text = text
+	btn.Text = text or "Button"
 	btn.Font = BuilderUI.ActiveTheme.Font
 	btn.TextSize = 16
 	btn.TextColor3 = BuilderUI.ActiveTheme.Text
 	btn.BackgroundColor3 = BuilderUI.ActiveTheme.Tertiary
+	btn.AutoButtonColor = false
+
 	createUICorner(btn)
-	createTooltip(btn, tooltipText)
+	if tooltipText then
+		createTooltip(btn, tooltipText)
+	end
+
 	local originalColor = btn.BackgroundColor3
 
 	btn.MouseEnter:Connect(function()
-		tween(btn, { BackgroundColor3 = Color3.Lerp(originalColor, Color3.new(1,1,1), 0.1) }):Play()
+		tween(btn, { BackgroundColor3 = Color3.Lerp(originalColor, Color3.new(1, 1, 1), 0.1) }):Play()
 	end)
+
 	btn.MouseLeave:Connect(function()
 		tween(btn, { BackgroundColor3 = originalColor }):Play()
 	end)
+
 	btn.MouseButton1Click:Connect(function()
 		tween(btn, { BackgroundColor3 = BuilderUI.ActiveTheme.Accent }):Play()
 		task.wait(0.1)
 		tween(btn, { BackgroundColor3 = originalColor }):Play()
-		if callback then spawn(function() pcall(callback) end) end
+
+		if typeof(callback) == "function" then
+			task.spawn(function()
+				pcall(callback)
+			end)
+		else
+			warn("[AddButton] Callback is not a function:", typeof(callback))
+		end
 	end)
 
-	return btn -- ✅ ADD THIS LINE
+	return btn
 end
 		function tab:AddToggle(text, callback, default, tooltipText)
 			local toggled = default or false
