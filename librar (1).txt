@@ -329,32 +329,38 @@ function BuilderUI:NotifySuccess(...) createNotification("Success", ...) end
 function BuilderUI:NotifyWarning(...) createNotification("Warning", ...) end
 function BuilderUI:NotifyError(...) createNotification("Error", ...) end
 
---// MAIN WINDOW \\--
-function BuilderUI:CreateWindow(titleText)
-	local gui = Instance.new("ScreenGui", playerGui)
+--// MAIN WINDOW \\--function BuilderUI:CreateWindow(titleText)
+	local gui = Instance.new("ScreenGui")
 	gui.Name = "BuilderUI_" .. titleText:gsub("%s+", "")
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 	gui.ResetOnSpawn = false
-	
-	local frame = Instance.new("Frame", gui)
+	gui.Parent = playerGui
+
+	-- Main window frame
+	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(0, 600, 0, 400)
-	frame.Position = UDim2.new(0.5, -300, 0.45, -200) -- Start higher
+	frame.Position = UDim2.new(0.5, -300, 0.45, -200) -- start slightly higher
 	frame.BackgroundColor3 = BuilderUI.ActiveTheme.Background
 	frame.BackgroundTransparency = 1
 	frame.Active = true
 	frame.Draggable = true
 	frame.ClipsDescendants = true
-	createUICorner(frame)
-	
-	-- Store original size for restore
+	frame.Parent = gui
+
+	-- ✅ Apply curved corners only to this frame
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12) -- Adjust corner radius here
+	corner.Parent = frame
+
+	-- Store for minimizing logic if needed
 	local originalSize = frame.Size
 	local isMinimized = false
 
+	-- Smooth show animation
 	tween(frame, {
 		Position = UDim2.new(0.5, -300, 0.5, -200),
 		BackgroundTransparency = 0
 	}):Play()
-	
 	-- Header
 	local header = Instance.new("Frame", frame)
 	header.Size = UDim2.new(1, 0, 0, 36)
