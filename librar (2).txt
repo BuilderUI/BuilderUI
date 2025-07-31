@@ -1,0 +1,960 @@
+--[[
+	Gemini's All-in-One UI Library
+	Version: 1.0
+	Description: A comprehensive, single-script UI library for Roblox.
+	Features: Theming, animations, and a suite of extensible UI elements.
+]]
+
+local UILibrary = {}
+UILibrary.__index = UILibrary
+
+-- Roblox Services
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- Library Core
+UILibrary.Name = "Gemini UI Library"
+UILibrary.Version = "1.0"
+UILibrary.ActiveElements = {} -- Keep track of created elements for theme updates
+
+--============================================================================--
+--[[                                  CONFIG                                  ]]--
+--============================================================================--
+local Config = {
+	DefaultTheme = "Midnight", -- Default theme name
+	DefaultFont = "GothamSSm",   -- Default font name
+	AnimationSpeed = {
+		Fast = 0.15,
+		Normal = 0.3,
+		Slow = 0.6,
+	},
+	ZIndex = {
+		Base = 100,
+		Dropdown = 110,
+		Tooltip = 120,
+		Window = 90,
+	},
+	ScreenPadding = 20,
+}
+
+--============================================================================--
+--[[                                  FONTS                                   ]]--
+--============================================================================--
+-- A collection of Roblox's best fonts for UI design.
+UILibrary.Fonts = {
+	-- Sans-Serif (Clean & Modern)
+	GothamSSm = {Enum.Font.GothamSemibold, Enum.Font.Gotham, Enum.Font.GothamBold},
+	SourceSans = {Enum.Font.SourceSans, Enum.Font.SourceSans, Enum.Font.SourceSansBold},
+	Montserrat = {Enum.Font.Montserrat, Enum.Font.Montserrat, Enum.Font.MontserratBold},
+
+	-- Serif (Classic & Elegant)
+	Merriweather = {Enum.Font.Merriweather, Enum.Font.Merriweather, Enum.Font.MerriweatherBold},
+	Bodoni = {Enum.Font.Bodoni, Enum.Font.Bodoni, Enum.Font.Bodoni}, -- No bold variant in enum
+
+	-- Monospaced (Code & Tech)
+	Code = {Enum.Font.Code, Enum.Font.Code, Enum.Font.Code},
+	Inconsolata = {Enum.Font.Inconsolata, Enum.Font.Inconsolata, Enum.Font.Inconsolata},
+}
+
+--============================================================================--
+--[[                                  THEMES                                  ]]--
+--============================================================================--
+-- Define your color schemes here. Add as many as you like.
+UILibrary.Themes = {
+	Midnight = {
+		Name = "Midnight",
+		Text = Color3.fromRGB(230, 230, 230),
+		TextDisabled = Color3.fromRGB(120, 120, 120),
+		Accent = Color3.fromRGB(80, 165, 255),
+		AccentText = Color3.fromRGB(255, 255, 255),
+		Background = Color3.fromRGB(25, 25, 30),
+		Primary = Color3.fromRGB(40, 40, 48),
+		Secondary = Color3.fromRGB(55, 55, 65),
+		Border = Color3.fromRGB(70, 70, 80),
+		DropShadow = Color3.fromRGB(15, 15, 15),
+		Success = Color3.fromRGB(40, 190, 120),
+		Warning = Color3.fromRGB(255, 190, 80),
+		Error = Color3.fromRGB(255, 80, 100),
+	},
+	Glacier = {
+		Name = "Glacier",
+		Text = Color3.fromRGB(40, 50, 70),
+		TextDisabled = Color3.fromRGB(150, 160, 170),
+		Accent = Color3.fromRGB(0, 120, 215),
+		AccentText = Color3.fromRGB(255, 255, 255),
+		Background = Color3.fromRGB(245, 248, 252),
+		Primary = Color3.fromRGB(255, 255, 255),
+		Secondary = Color3.fromRGB(230, 235, 240),
+		Border = Color3.fromRGB(200, 205, 210),
+		DropShadow = Color3.fromRGB(180, 180, 180),
+		Success = Color3.fromRGB(16, 124, 16),
+		Warning = Color3.fromRGB(196, 149, 0),
+		Error = Color3.fromRGB(194, 57, 57),
+	},
+}
+
+UILibrary.CurrentTheme = UILibrary.Themes[Config.DefaultTheme]
+UILibrary.CurrentFont = UILibrary.Fonts[Config.DefaultFont]
+
+--============================================================================--
+--[[                            UTILITIES & HELPERS                           ]]--
+--============================================================================--
+local Utils = {}
+
+function Utils.Create(instanceType, properties)
+	local inst = Instance.new(instanceType)
+	for prop, value in pairs(properties or {}) do
+		inst[prop] = value
+	end
+	return inst
+end
+
+function Utils.CreateShadow(parent)
+	return Utils.Create("ImageLabel", {
+		Name = "DropShadow",
+		Parent = parent,
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://6373824844", -- 9-slice shadow
+		ImageColor3 = UILibrary.CurrentTheme.DropShadow,
+		SliceCenter = Rect.new(49, 49, 450, 450),
+		ScaleType = Enum.ScaleType.Slice,
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromOffset(5, 5),
+		ZIndex = parent.ZIndex - 1,
+	})
+end
+
+function Utils.ApplyFont(inst, weight)
+	weight = weight or "Regular"
+	local fontSet = UILibrary.CurrentFont
+	if weight == "Regular" then inst.Font = fontSet[2] end
+	if weight == "Semibold" then inst.Font = fontSet[1] end
+	if weight == "Bold" then inst.Font = fontSet[3] end
+end
+
+function Utils.Round(num, places)
+	local mult = 10^(places or 0)
+	return math.floor(num * mult + 0.5) / mult
+end
+
+--============================================================================--
+--[[                             ANIMATION ENGINE                             ]]--
+--============================================================================--
+local Animate = {}
+
+function Animate.Tween(instance, propertyTable, speed, easingStyle, easingDirection)
+	speed = speed or Config.AnimationSpeed.Normal
+	easingStyle = easingStyle or Enum.EasingStyle.Quart
+	easingDirection = easingDirection or Enum.EasingDirection.Out
+
+	local tweenInfo = TweenInfo.new(speed, easingStyle, easingDirection)
+	local tween = TweenService:Create(instance, tweenInfo, propertyTable)
+	tween:Play()
+	return tween
+end
+
+function Animate.Hover(instance, hoverEffect)
+	instance.MouseEnter:Connect(function()
+		if hoverEffect then
+			hoverEffect(true)
+		else
+			Animate.Tween(instance, { BackgroundColor3 = UILibrary.CurrentTheme.Secondary }, Config.AnimationSpeed.Fast)
+		end
+	end)
+	instance.MouseLeave:Connect(function()
+		if hoverEffect then
+			hoverEffect(false)
+		else
+			Animate.Tween(instance, { BackgroundColor3 = UILibrary.CurrentTheme.Primary }, Config.AnimationSpeed.Fast)
+		end
+	end)
+end
+
+function Animate.Press(instance, pressEffect)
+	instance.MouseButton1Down:Connect(function()
+		if pressEffect then
+			pressEffect(true)
+		else
+			Animate.Tween(instance, { Size = UDim2.fromScale(0.95, 0.95) }, Config.AnimationSpeed.Fast)
+		end
+	end)
+	instance.MouseButton1Up:Connect(function()
+		if pressEffect then
+			pressEffect(false)
+		else
+			Animate.Tween(instance, { Size = UDim2.fromScale(1, 1) }, Config.AnimationSpeed.Fast)
+		end
+	end)
+end
+
+--============================================================================--
+--[[                             LIBRARY METHODS                              ]]--
+--============================================================================--
+
+function UILibrary:SetTheme(themeName)
+	if not self.Themes[themeName] then
+		warn(`Theme "{themeName}" does not exist.`)
+		return
+	end
+	self.CurrentTheme = self.Themes[themeName]
+
+	-- Update all active elements with the new theme
+	for _, element in pairs(self.ActiveElements) do
+		if element and typeof(element) == "table" and element.UpdateTheme then
+			element:UpdateTheme()
+		end
+	end
+end
+
+function UILibrary:SetFont(fontName)
+	if not self.Fonts[fontName] then
+		warn(`Font "{fontName}" does not exist.`)
+		return
+	end
+	self.CurrentFont = self.Fonts[fontName]
+
+	for _, element in pairs(self.ActiveElements) do
+		if element and typeof(element) == "table" and element.UpdateFont then
+			element:UpdateFont()
+		end
+	end
+end
+
+function UILibrary:Destroy()
+	for _, element in pairs(self.ActiveElements) do
+		if element and typeof(element) == "table" and element.Destroy then
+			element:Destroy()
+		end
+	end
+	self.ActiveElements = {}
+end
+
+--============================================================================--
+--[[                             BASE ELEMENT CLASS                           ]]--
+--============================================================================--
+local BaseElement = {}
+BaseElement.__index = BaseElement
+
+function BaseElement:new(instance)
+	local element = setmetatable({}, self)
+	element.Instance = instance
+	element.Connections = {}
+	table.insert(UILibrary.ActiveElements, element)
+	return element
+end
+
+function BaseElement:Connect(event, callback)
+	table.insert(self.Connections, event:Connect(callback))
+end
+
+function BaseElement:Destroy()
+	for _, connection in pairs(self.Connections) do
+		connection:Disconnect()
+	end
+	self.Instance:Destroy()
+	-- Remove from active elements list
+	for i, el in ipairs(UILibrary.ActiveElements) do
+		if el == self then
+			table.remove(UILibrary.ActiveElements, i)
+			break
+		end
+	end
+end
+
+--============================================================================--
+--[[                             UI ELEMENTS                                  ]]--
+--============================================================================--
+UILibrary.Elements = {}
+
+---
+-- Window
+---
+local Window = setmetatable({}, BaseElement)
+Window.__index = Window
+
+function UILibrary.Elements:Window(props)
+	props = props or {}
+	local title = props.Title or "Window"
+	local size = props.Size or UDim2.fromOffset(400, 300)
+	local position = props.Position or UDim2.new(0.5, -size.X.Offset / 2, 0.5, -size.Y.Offset / 2)
+	local draggable = props.Draggable ~= false
+	local closable = props.Closable ~= false
+
+	local frame = Utils.Create("Frame", {
+		Name = "Window",
+		Size = size,
+		Position = position,
+		BackgroundColor3 = UILibrary.CurrentTheme.Background,
+		BorderSizePixel = 0,
+		ZIndex = Config.ZIndex.Window,
+		Parent = props.Parent or game.Players.LocalPlayer:WaitForChild("PlayerGui"),
+		Visible = props.Visible ~= false
+	})
+
+	local corner = Utils.Create("UICorner", { CornerRadius = UDim.new(0, 8), Parent = frame })
+	local shadow = Utils.CreateShadow(frame)
+	
+	local titleBar = Utils.Create("Frame", {
+		Name = "TitleBar",
+		Size = UDim2.new(1, 0, 0, 32),
+		BackgroundColor3 = UILibrary.CurrentTheme.Primary,
+		BorderSizePixel = 0,
+		ZIndex = frame.ZIndex + 1,
+		Parent = frame,
+	})
+
+	local titleLabel = Utils.Create("TextLabel", {
+		Name = "TitleLabel",
+		Size = UDim2.new(1, -40, 1, 0),
+		Position = UDim2.fromOffset(12, 0),
+		BackgroundTransparency = 1,
+		Text = title,
+		TextColor3 = UILibrary.CurrentTheme.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = titleBar.ZIndex + 1,
+		Parent = titleBar,
+	})
+	Utils.ApplyFont(titleLabel, "Semibold")
+
+	local contentFrame = Utils.Create("Frame", {
+		Name = "Content",
+		Size = UDim2.new(1, 0, 1, -32),
+		Position = UDim2.fromOffset(0, 32),
+		BackgroundTransparency = 1,
+		Parent = frame,
+	})
+
+	local windowObj = setmetatable({}, Window)
+	windowObj.Instance = frame
+	windowObj.TitleBar = titleBar
+	windowObj.TitleLabel = titleLabel
+	windowObj.Content = contentFrame
+	windowObj.Connections = {}
+	
+	if closable then
+		local closeButton = UILibrary.Elements:Button({
+			Parent = titleBar,
+			Text = "X",
+			Size = UDim2.fromOffset(24, 24),
+			Position = UDim2.new(1, -28, 0.5, -12),
+			AnchorPoint = Vector2.new(0, 0.5),
+			Callback = function() windowObj:Destroy() end,
+		})
+	end
+	
+	if draggable then
+		local dragging = false
+		local dragStart
+		local startPos
+		
+		windowObj:Connect(titleBar.InputBegan, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = frame.Position
+				
+				local dragConnection
+				dragConnection = UserInputService.InputChanged:Connect(function(inputChanged)
+					if inputChanged.UserInputType == Enum.UserInputType.MouseMovement or inputChanged.UserInputType == Enum.UserInputType.Touch then
+						local delta = inputChanged.Position - dragStart
+						Animate.Tween(frame, {Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)}, 0)
+					end
+				end)
+
+				local stopConnection
+				stopConnection = UserInputService.InputEnded:Connect(function(inputEnded)
+					if inputEnded.UserInputType == Enum.UserInputType.MouseButton1 or inputEnded.UserInputType == Enum.UserInputType.Touch then
+						dragging = false
+						dragConnection:Disconnect()
+						stopConnection:Disconnect()
+					end
+				end)
+			end
+		end)
+	end
+
+	function windowObj:UpdateTheme()
+		frame.BackgroundColor3 = UILibrary.CurrentTheme.Background
+		shadow.ImageColor3 = UILibrary.CurrentTheme.DropShadow
+		titleBar.BackgroundColor3 = UILibrary.CurrentTheme.Primary
+		titleLabel.TextColor3 = UILibrary.CurrentTheme.Text
+	end
+	
+	function windowObj:UpdateFont()
+		Utils.ApplyFont(titleLabel, "Semibold")
+	end
+
+	function windowObj:SetTitle(newTitle)
+		titleLabel.Text = newTitle
+	end
+
+	table.insert(UILibrary.ActiveElements, windowObj)
+	return windowObj
+end
+
+
+---
+-- Button
+---
+local Button = setmetatable({}, BaseElement)
+Button.__index = Button
+
+function UILibrary.Elements:Button(props)
+	props = props or {}
+	
+	local button = Utils.Create("TextButton", {
+		Name = "Button",
+		Size = props.Size or UDim2.new(1, -20, 0, 36),
+		Position = props.Position or UDim2.fromOffset(10, 10),
+		AnchorPoint = props.AnchorPoint or Vector2.new(0, 0),
+		Text = props.Text or "Button",
+		BackgroundColor3 = UILibrary.CurrentTheme.Primary,
+		TextColor3 = UILibrary.CurrentTheme.Text,
+		ZIndex = (props.Parent and props.Parent.ZIndex or Config.ZIndex.Base) + 1,
+		Parent = props.Parent,
+		AutoButtonColor = false,
+	})
+
+	local corner = Utils.Create("UICorner", { CornerRadius = UDim.new(0, 6), Parent = button })
+	Utils.ApplyFont(button, "Regular")
+
+	local buttonObj = setmetatable({}, Button)
+	buttonObj.Instance = button
+	buttonObj.Connections = {}
+	buttonObj.Callback = props.Callback or function() end
+
+	if props.Accent then
+		button.BackgroundColor3 = UILibrary.CurrentTheme.Accent
+		button.TextColor3 = UILibrary.CurrentTheme.AccentText
+	end
+	
+	-- Animations
+	buttonObj:Connect(button.MouseEnter, function() Animate.Tween(button, {BackgroundColor3 = props.Accent and UILibrary.CurrentTheme.Accent:Lerp(Color3.new(1,1,1), 0.2) or UILibrary.CurrentTheme.Secondary}, 0.2) end)
+	buttonObj:Connect(button.MouseLeave, function() Animate.Tween(button, {BackgroundColor3 = props.Accent and UILibrary.CurrentTheme.Accent or UILibrary.CurrentTheme.Primary}, 0.2) end)
+	buttonObj:Connect(button.MouseButton1Down, function() Animate.Tween(button, {BackgroundColor3 = props.Accent and UILibrary.CurrentTheme.Accent:Lerp(Color3.new(0,0,0), 0.2) or UILibrary.CurrentTheme.Background}, 0.1) end)
+	buttonObj:Connect(button.MouseButton1Click, function()
+		Animate.Tween(button, {BackgroundColor3 = props.Accent and UILibrary.CurrentTheme.Accent:Lerp(Color3.new(1,1,1), 0.2) or UILibrary.CurrentTheme.Secondary}, 0.1)
+		pcall(buttonObj.Callback)
+	end)
+
+	function buttonObj:UpdateTheme()
+		if props.Accent then
+			button.BackgroundColor3 = UILibrary.CurrentTheme.Accent
+			button.TextColor3 = UILibrary.CurrentTheme.AccentText
+		else
+			button.BackgroundColor3 = UILibrary.CurrentTheme.Primary
+			button.TextColor3 = UILibrary.CurrentTheme.Text
+		end
+	end
+	
+	function buttonObj:UpdateFont()
+		Utils.ApplyFont(button, "Regular")
+	end
+
+	table.insert(UILibrary.ActiveElements, buttonObj)
+	return buttonObj
+end
+
+---
+-- Label
+---
+local Label = setmetatable({}, BaseElement)
+Label.__index = Label
+
+function UILibrary.Elements:Label(props)
+	props = props or {}
+
+	local label = Utils.Create("TextLabel", {
+		Name = "Label",
+		Size = props.Size or UDim2.new(1, 0, 0, 30),
+		Position = props.Position or UDim2.fromOffset(0, 0),
+		BackgroundTransparency = 1,
+		Text = props.Text or "Label",
+		TextColor3 = UILibrary.CurrentTheme.Text,
+		TextXAlignment = props.Align or Enum.TextXAlignment.Left,
+		ZIndex = (props.Parent and props.Parent.ZIndex or Config.ZIndex.Base) + 1,
+		Parent = props.Parent,
+	})
+
+	Utils.ApplyFont(label, props.Weight or "Regular")
+	
+	local labelObj = setmetatable({}, Label)
+	labelObj.Instance = label
+	
+	function labelObj:UpdateTheme()
+		label.TextColor3 = UILibrary.CurrentTheme.Text
+	end
+	
+	function labelObj:UpdateFont()
+		Utils.ApplyFont(label, props.Weight or "Regular")
+	end
+
+	table.insert(UILibrary.ActiveElements, labelObj)
+	return labelObj
+end
+
+
+---
+-- Checkbox
+---
+local Checkbox = setmetatable({}, BaseElement)
+Checkbox.__index = Checkbox
+
+function UILibrary.Elements:Checkbox(props)
+	props = props or {}
+	local checked = props.Checked or false
+	
+	local container = Utils.Create("Frame", {
+		Name = "CheckboxContainer",
+		Size = props.Size or UDim2.new(1, 0, 0, 24),
+		Position = props.Position,
+		BackgroundTransparency = 1,
+		Parent = props.Parent,
+	})
+	
+	local box = Utils.Create("Frame", {
+		Name = "Box",
+		Size = UDim2.fromOffset(20, 20),
+		Position = UDim2.new(0, 0, 0.5, -10),
+		BackgroundColor3 = UILibrary.CurrentTheme.Primary,
+		BorderColor3 = UILibrary.CurrentTheme.Border,
+		BorderSizePixel = 1,
+		Parent = container,
+	})
+	local boxCorner = Utils.Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = box })
+	
+	local check = Utils.Create("ImageLabel", {
+		Name = "Check",
+		Size = UDim2.fromScale(0.7, 0.7),
+		Position = UDim2.fromScale(0.15, 0.15),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://3926307971", -- Checkmark Icon
+		ImageColor3 = UILibrary.CurrentTheme.AccentText,
+		ImageTransparency = checked and 0 or 1,
+		Parent = box,
+	})
+
+	local label = UILibrary.Elements:Label({
+		Parent = container,
+		Text = props.Text or "Checkbox",
+		Position = UDim2.new(0, 30, 0, 0),
+		Size = UDim2.new(1, -30, 1, 0),
+	})
+
+	local button = Utils.Create("TextButton", {
+		Name = "Hitbox",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "",
+		Parent = container,
+		ZIndex = container.ZIndex + 1,
+	})
+
+	local checkboxObj = setmetatable({}, Checkbox)
+	checkboxObj.Instance = container
+	checkboxObj.Connections = {}
+	checkboxObj.OnChanged = Instance.new("BindableEvent")
+	
+	local function updateState()
+		local goalBG = checked and UILibrary.CurrentTheme.Accent or UILibrary.CurrentTheme.Primary
+		local goalCheck = checked and 0 or 1
+		Animate.Tween(box, { BackgroundColor3 = goalBG }, 0.2)
+		Animate.Tween(check, { ImageTransparency = goalCheck }, 0.2)
+		checkboxObj.OnChanged:Fire(checked)
+	end
+	updateState() -- set initial state
+
+	checkboxObj:Connect(button.MouseButton1Click, function()
+		checked = not checked
+		updateState()
+	end)
+
+	function checkboxObj:GetValue() return checked end
+	function checkboxObj:SetValue(value)
+		if checked ~= value then
+			checked = value
+			updateState()
+		end
+	end
+
+	function checkboxObj:UpdateTheme()
+		updateState()
+		box.BorderColor3 = UILibrary.CurrentTheme.Border
+		check.ImageColor3 = UILibrary.CurrentTheme.AccentText
+		label:UpdateTheme()
+	end
+
+	table.insert(UILibrary.ActiveElements, checkboxObj)
+	return checkboxObj
+end
+
+---
+-- Slider
+---
+local Slider = setmetatable({}, BaseElement)
+Slider.__index = Slider
+
+function UILibrary.Elements:Slider(props)
+	props = props or {}
+	local min, max, value = props.Min or 0, props.Max or 100, props.Value or 50
+	
+	local container = Utils.Create("Frame", {
+		Name = "SliderContainer",
+		Size = props.Size or UDim2.new(1, -20, 0, 30),
+		Position = props.Position or UDim2.fromOffset(10, 0),
+		BackgroundTransparency = 1,
+		Parent = props.Parent,
+	})
+	
+	local label = UILibrary.Elements:Label({
+		Parent = container,
+		Text = props.Text or "Slider",
+		Size = UDim2.new(0.5, 0, 1, 0),
+	})
+	
+	local valueLabel = UILibrary.Elements:Label({
+		Parent = container,
+		Align = Enum.TextXAlignment.Right,
+		Size = UDim2.new(0.5, 0, 1, 0),
+		Position = UDim2.fromScale(0.5, 0),
+	})
+	
+	local track = Utils.Create("Frame", {
+		Name = "Track",
+		Size = UDim2.new(1, 0, 0, 4),
+		Position = UDim2.new(0, 0, 0.5, 7),
+		AnchorPoint = Vector2.new(0, 0.5),
+		BackgroundColor3 = UILibrary.CurrentTheme.Primary,
+		Parent = container,
+	})
+	local trackCorner = Utils.Create("UICorner", { Parent = track })
+	
+	local fill = Utils.Create("Frame", {
+		Name = "Fill",
+		BackgroundColor3 = UILibrary.CurrentTheme.Accent,
+		Parent = track,
+	})
+	local fillCorner = Utils.Create("UICorner", { Parent = fill })
+	
+	local handle = Utils.Create("Frame", {
+		Name = "Handle",
+		Size = UDim2.fromOffset(14, 14),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = UILibrary.CurrentTheme.Accent,
+		BorderSizePixel = 3,
+		BorderColor3 = UILibrary.CurrentTheme.Background,
+		Parent = track,
+	})
+	local handleCorner = Utils.Create("UICorner", { CornerRadius = UDim.new(1, 0), Parent = handle })
+	
+	local hitbox = Utils.Create("TextButton", {
+		Name = "Hitbox",
+		Size = UDim2.new(1, 0, 1, 10),
+		Position = UDim2.new(0,0,0,-5),
+		BackgroundTransparency = 1, Text = "", Parent = track
+	})
+
+	local sliderObj = setmetatable({}, Slider)
+	sliderObj.Instance = container
+	sliderObj.Connections = {}
+	sliderObj.OnChanged = Instance.new("BindableEvent")
+	
+	local function updateSlider(newValue, fromInput)
+		value = math.clamp(newValue, min, max)
+		local alpha = (value - min) / (max - min)
+		
+		fill.Size = UDim2.new(alpha, 0, 1, 0)
+		handle.Position = UDim2.fromScale(alpha, 0.5)
+		valueLabel.Instance.Text = tostring(Utils.Round(value, props.Decimals or 0))
+		
+		if fromInput then
+			sliderObj.OnChanged:Fire(value)
+		end
+	end
+	
+	updateSlider(value) -- set initial state
+	
+	local function inputUpdate(input)
+		local pos = input.Position.X - track.AbsolutePosition.X
+		local alpha = math.clamp(pos / track.AbsoluteSize.X, 0, 1)
+		local newValue = min + (max - min) * alpha
+		updateSlider(newValue, true)
+	end
+	
+	local dragging = false
+	sliderObj:Connect(hitbox.InputBegan, function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			inputUpdate(input)
+		end
+	end)
+	sliderObj:Connect(UserInputService.InputEnded, function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+	end)
+	sliderObj:Connect(UserInputService.InputChanged, function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			inputUpdate(input)
+		end
+	end)
+
+	function sliderObj:GetValue() return value end
+	function sliderObj:SetValue(newValue)
+		if newValue ~= value then updateSlider(newValue, false) end
+	end
+	
+	function sliderObj:UpdateTheme()
+		track.BackgroundColor3 = UILibrary.CurrentTheme.Primary
+		fill.BackgroundColor3 = UILibrary.CurrentTheme.Accent
+		handle.BackgroundColor3 = UILibrary.CurrentTheme.Accent
+		handle.BorderColor3 = UILibrary.CurrentTheme.Background
+		label:UpdateTheme()
+		valueLabel:UpdateTheme()
+	end
+	
+	table.insert(UILibrary.ActiveElements, sliderObj)
+	return sliderObj
+end
+
+
+---
+-- Dropdown
+---
+local Dropdown = setmetatable({}, BaseElement)
+Dropdown.__index = Dropdown
+
+function UILibrary.Elements:Dropdown(props)
+	props = props or {}
+	local options = props.Options or {"Option 1", "Option 2"}
+	local selectedIndex = props.DefaultIndex or 1
+
+	local container = Utils.Create("Frame", {
+		Name = "Dropdown",
+		Size = props.Size or UDim2.new(1, -20, 0, 36),
+		Position = props.Position or UDim2.fromOffset(10, 10),
+		BackgroundColor3 = UILibrary.CurrentTheme.Primary,
+		Parent = props.Parent,
+		ZIndex = Config.ZIndex.Dropdown,
+	})
+	local corner = Utils.Create("UICorner", { CornerRadius = UDim.new(0, 6), Parent = container })
+
+	local label = Utils.Create("TextLabel", {
+		Name = "SelectedLabel",
+		Size = UDim2.new(1, -30, 1, 0),
+		Position = UDim2.fromOffset(10, 0),
+		BackgroundTransparency = 1,
+		TextColor3 = UILibrary.CurrentTheme.Text,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Text = options[selectedIndex],
+		Parent = container,
+	})
+	Utils.ApplyFont(label)
+
+	local arrow = Utils.Create("ImageLabel", {
+		Name = "Arrow",
+		Size = UDim2.fromOffset(16, 16),
+		Position = UDim2.new(1, -22, 0.5, -8),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://3926305904", -- Chevron down
+		ImageColor3 = UILibrary.CurrentTheme.Text,
+		Parent = container,
+	})
+
+	local button = Utils.Create("TextButton", {
+		Name = "Hitbox",
+		Size = UDim2.fromScale(1, 1),
+		Text = "", BackgroundTransparency = 1, Parent = container
+	})
+	
+	local dropdownObj = setmetatable({}, Dropdown)
+	dropdownObj.Instance = container
+	dropdownObj.Connections = {}
+	dropdownObj.OnChanged = Instance.new("BindableEvent")
+	
+	local optionsFrame = nil
+	local open = false
+	
+	local function closeDropdown()
+		if not optionsFrame then return end
+		open = false
+		Animate.Tween(arrow, { Rotation = 0 }, 0.2)
+		Animate.Tween(optionsFrame, { Size = UDim2.new(1, 0, 0, 0) }, 0.2):GetPropertyChangedSignal("Completed"):Once(function()
+			optionsFrame:Destroy()
+			optionsFrame = nil
+		end)
+	end
+
+	local function openDropdown()
+		if open then closeDropdown() return end
+		open = true
+		Animate.Tween(arrow, { Rotation = 180 }, 0.2)
+		
+		optionsFrame = Utils.Create("ScrollingFrame", {
+			Name = "Options",
+			Size = UDim2.new(1, 0, 0, 0),
+			Position = UDim2.new(0, 0, 1, 5),
+			BackgroundColor3 = UILibrary.CurrentTheme.Primary,
+			BorderSizePixel = 0,
+			CanvasSize = UDim2.new(0, 0, 0, #options * 32),
+			ScrollBarImageColor3 = UILibrary.CurrentTheme.Accent,
+			ScrollBarThickness = 4,
+			Parent = container,
+			ZIndex = container.ZIndex - 1,
+		})
+		Utils.Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = optionsFrame})
+		Utils.Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Parent = optionsFrame})
+		
+		for i, optionText in ipairs(options) do
+			local optionBtn = Utils.Create("TextButton", {
+				Name = "Option_" .. i,
+				Size = UDim2.new(1, 0, 0, 32),
+				Text = optionText,
+				BackgroundColor3 = UILibrary.CurrentTheme.Primary,
+				TextColor3 = UILibrary.CurrentTheme.Text,
+				LayoutOrder = i,
+				Parent = optionsFrame,
+				AutoButtonColor = false,
+			})
+			Utils.ApplyFont(optionBtn)
+			
+			optionBtn.MouseEnter:Connect(function() Animate.Tween(optionBtn, {BackgroundColor3 = UILibrary.CurrentTheme.Secondary}, 0.1) end)
+			optionBtn.MouseLeave:Connect(function() Animate.Tween(optionBtn, {BackgroundColor3 = UILibrary.CurrentTheme.Primary}, 0.1) end)
+			optionBtn.MouseButton1Click:Connect(function()
+				selectedIndex = i
+				label.Text = optionText
+				dropdownObj.OnChanged:Fire(optionText, selectedIndex)
+				closeDropdown()
+			end)
+		end
+		
+		local height = math.min(#options * 32, 160) -- Max height
+		Animate.Tween(optionsFrame, { Size = UDim2.new(1, 0, 0, height) }, 0.2)
+	end
+	
+	dropdownObj:Connect(button.MouseButton1Click, openDropdown)
+
+	function dropdownObj:GetValue() return options[selectedIndex], selectedIndex end
+	
+	function dropdownObj:UpdateTheme()
+		container.BackgroundColor3 = UILibrary.CurrentTheme.Primary
+		label.TextColor3 = UILibrary.CurrentTheme.Text
+		arrow.ImageColor3 = UILibrary.CurrentTheme.Text
+		if optionsFrame then
+			optionsFrame.BackgroundColor3 = UILibrary.CurrentTheme.Primary
+			optionsFrame.ScrollBarImageColor3 = UILibrary.CurrentTheme.Accent
+			for _, btn in ipairs(optionsFrame:GetChildren()) do
+				if btn:IsA("TextButton") then
+					btn.BackgroundColor3 = UILibrary.CurrentTheme.Primary
+					btn.TextColor3 = UILibrary.CurrentTheme.Text
+				end
+			end
+		end
+	end
+
+	table.insert(UILibrary.ActiveElements, dropdownObj)
+	return dropdownObj
+end
+
+--============================================================================--
+--[[                             EXAMPLE USAGE                              ]]--
+--============================================================================--
+--[[
+	-- To use this library, place it in a ModuleScript (e.g., in ReplicatedStorage)
+	-- Then, in a LocalScript, require it:
+	
+	local UILibrary = require(game.ReplicatedStorage.UILibrary)
+	
+	-- Create a window
+	local myWindow = UILibrary.Elements:Window({
+		Title = "Gemini UI Demo",
+		Size = UDim2.fromOffset(350, 450),
+	})
+	
+	-- Add a label
+	UILibrary.Elements:Label({
+		Parent = myWindow.Content,
+		Text = "Welcome to the UI Library!",
+		Position = UDim2.fromOffset(10, 10),
+		Size = UDim2.new(1, -20, 0, 20),
+		Align = Enum.TextXAlignment.Center,
+		Weight = "Semibold"
+	})
+	
+	-- Add a button
+	local myButton = UILibrary.Elements:Button({
+		Parent = myWindow.Content,
+		Text = "Click Me",
+		Position = UDim2.fromOffset(10, 40),
+	})
+	myButton.Instance.MouseButton1Click:Connect(function()
+		print("Button clicked!")
+	end)
+
+	-- Add an accent button
+	UILibrary.Elements:Button({
+		Parent = myWindow.Content,
+		Text = "Accent Button",
+		Position = UDim2.fromOffset(10, 80),
+		Accent = true,
+	})
+	
+	-- Add a checkbox
+	local myCheckbox = UILibrary.Elements:Checkbox({
+		Parent = myWindow.Content,
+		Text = "Enable Feature",
+		Position = UDim2.fromOffset(10, 120),
+		Checked = true,
+	})
+	myCheckbox.OnChanged:Connect(function(newValue)
+		print("Checkbox is now:", newValue)
+	end)
+	
+	-- Add a slider
+	local mySlider = UILibrary.Elements:Slider({
+		Parent = myWindow.Content,
+		Text = "Power Level",
+		Position = UDim2.fromOffset(10, 160),
+		Min = 0, Max = 9001, Value = 1000
+	})
+	mySlider.OnChanged:Connect(function(newValue)
+		print("Slider value:", newValue)
+	end)
+
+	-- Add a dropdown
+	local myDropdown = UILibrary.Elements:Dropdown({
+		Parent = myWindow.Content,
+		Position = UDim2.fromOffset(10, 210),
+		Options = {"Knight", "Mage", "Rogue", "Archer"},
+	})
+	myDropdown.OnChanged:Connect(function(text, index)
+		print(string.format("Dropdown selected: %s (Index: %d)", text, index))
+	end)
+
+	-- Create another window to show theme switching
+	local themeWindow = UILibrary.Elements:Window({
+		Title = "Theme Switcher",
+		Size = UDim2.fromOffset(200, 120),
+		Position = UDim2.new(0, 20, 0.5, -60)
+	})
+	
+	UILibrary.Elements:Button({
+		Parent = themeWindow.Content,
+		Text = "Midnight Theme",
+		Position = UDim2.fromOffset(10, 10),
+		Callback = function()
+			UILibrary:SetTheme("Midnight")
+		end
+	})
+	
+	UILibrary.Elements:Button({
+		Parent = themeWindow.Content,
+		Text = "Glacier Theme",
+		Position = UDim2.fromOffset(10, 50),
+		Callback = function()
+			UILibrary:SetTheme("Glacier")
+		end
+	})
+
+]]
+
+return UILibrary
